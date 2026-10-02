@@ -16,7 +16,7 @@
 #
 set -euo pipefail
 
-SKILLS=(6502-instruction-set 6502-memory-map 6502-merlin-assembler 6502-snes-sa1 6502-sweet16 6502-to-rust)
+SKILLS=(6502-instruction-set 6502-memory-map 6502-merlin-assembler 6502-snes-sa1 6502-sweet16 6502-to-c 6502-to-rust)
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
 mode="symlink"

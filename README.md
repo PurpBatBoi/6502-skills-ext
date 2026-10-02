@@ -20,6 +20,7 @@ address and purpose only.
 | **`6502-memory-map`** | Apple II, C64, Atari 8-bit, and SNES memory maps, I/O registers, ROM entry points, and zero-page conventions: Apple soft switches, language card, Monitor ROM, Applesoft FP; C64 6510 banking, VIC-II/SID/CIA, the KERNAL jump table; Atari ANTIC/GTIA/POKEY, shadow registers, CIO/SIO, the $E450 vectors; SNES bus A/B, LoROM/HiROM, FastROM speeds, `$4200` CPU registers, `$43xx` DMA/HDMA. |
 | **`6502-snes-sa1`** | The SA-1 SNES coprocessor (a second 65C816 in the cart): dual-CPU model and per-side memory maps, boot, inter-CPU IRQ/messages, I-RAM/BW-RAM write protection, Super MMC banking, SA-1 and character-conversion DMA, the arithmetic unit, variable-length bit reads, the timer, and every `$2200-$230E` register. |
 | **`6502-sweet16`** | Wozniak's SWEET16 — the 16-bit interpreted pseudo-processor in the Apple II Integer BASIC ROM (entry `$F689`): registers, opcode set, invocation, and how to decode its inline bytecode. |
+| **`6502-to-c`** | The same lift → raise → emit workflow targeting portable C99, NMOS 6502 only (6510/C64, 2A03/NES). One C core builds as host C and back onto the 6502 with llvm-mos (C64, Atari 8-bit, Apple II, NES). Covers C's integer-promotion traps, a `platform.h` hardware layer, `__zp`, inline asm for ROM calls, and differential testing on host and `mos-sim`. |
 | **`6502-to-rust`** | A two-stage workflow for porting 6502 assembly to idiomatic Rust via an explicit, flag-faithful intermediate language: lift → recover intent → emit, plus correctness rules and a verification method. |
 
 ## Installing
@@ -31,7 +32,7 @@ directories; what differs per agent is *which* directory it scans.
 
 ### Quick install — `install.sh`
 
-`install.sh` symlinks (or copies) the six `6502-*` skills into the right place:
+`install.sh` symlinks (or copies) the seven `6502-*` skills into the right place:
 
 ```sh
 ./install.sh --claude            # Claude Code, personal      → ~/.claude/skills/
@@ -83,10 +84,11 @@ marketplaces; for direct use, install the directories as above.
                                 │
                           6502-snes-sa1      ← SNES SA-1 carts: second CPU,
                                 │              its own map and registers
-                6502-to-rust        ← uses all of the above to port
+         6502-to-rust   6502-to-c   ← use all of the above to port
+                       (C99: host + llvm-mos)
 ```
 
-When porting (`6502-to-rust`), the other skills supply the context the port
+When porting (`6502-to-rust` or `6502-to-c`), the other skills supply the context the port
 depends on:
 - the instruction set fixes semantics;
 - the memory map classifies every address as RAM / hardware / ROM call;
@@ -107,6 +109,13 @@ Built and iterated with the `skill-creator` skill. Key technical facts
 were verified against primary sources (Wozniak's BYTE 1977 SWEET16 article, the
 Brutal Deluxe Merlin 32 manual, the Apple II/C64 memory-map references) during
 authoring.
+
+The `6502-to-c` skill's C code and llvm-mos details were verified by building
+and running them. The test machine had gcc 16 (MinGW) and llvm-mos clang 24
+(SDK in `C:\llvm-mos`). Every snippet passes both on the host and on `mos-sim`
+(16-bit `int`). The drivers, predefined macros, `__zp`, inline-asm
+constraints, calling convention, and soft-stack behavior were read from the
+compiler's own output.
 
 The 65816/SNES/SA-1 content was checked against these sources:
 
