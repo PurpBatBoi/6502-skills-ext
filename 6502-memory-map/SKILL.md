@@ -1,23 +1,23 @@
 ---
 name: 6502-memory-map
 description: >-
-  Memory maps, I/O register layouts, ROM entry points, and zero-page conventions
-  for the main 6502 home computers: the Apple II family, the Commodore 64, and
-  the Atari 400/800/XL/XE. Covers Apple II soft switches ($C000-$C0FF), language
-  card, Monitor ROM and Applesoft FP; C64 6510 $00/$01 banking, VIC-II/SID/CIA
-  and the KERNAL table ($FFD2 CHROUT); and Atari ANTIC/GTIA/POKEY chips, shadow
-  registers, CIO/SIO and the $E450 OS vectors. Use this skill WHENEVER you need
-  to know what a memory address or hardware register means on an Apple II, C64,
-  or Atari, what a soft switch or ROM routine does, where the screen/zero
-  page/stack are, or how banking works. Trigger on addresses like $C050, $FDED,
-  $D020, $FFD2, $D40A, $E456, on names like COUT/CHROUT/CIOV/POKEY/FAC, or any
-  "what is at address X" / "what does this poke/STA do to hardware" question.
-  Pairs with
-  the 6502-instruction-set, 6502-merlin-assembler, 6502-sweet16, and 6502-to-rust
-  skills.
+  Memory maps, I/O registers, ROM entry points, and zero-page conventions for
+  Apple II, Commodore 64, Atari 8-bit, and SNES (5A22 side). Covers
+  Apple soft switches, language card, Monitor ROM, Applesoft FP; C64 banking,
+  VIC-II/SID/CIA, KERNAL; Atari ANTIC/GTIA/POKEY, shadow registers, CIO/SIO;
+  SNES bus A/B, LoROM/HiROM/ExHiROM, FastROM, $42xx CPU registers, $43xx
+  DMA/HDMA, the ROM header ($FFC0, map mode, checksum) and .sfc/.smc files.
+  Use this skill WHENEVER you need to know what an address, register or ROM
+  routine means on these machines, where the screen/zero page/stack are, how
+  banking works, or how a SNES ROM file is laid out. Trigger on addresses like $C050, $FDED, $D020, $FFD2, $D40A,
+  $2118, $4200, $420B, $7E0000, $FFD5, on names like
+  COUT/CHROUT/CIOV/POKEY/NMITIMEN/MDMAEN/HDMAEN/INIDISP, or on any "what is
+  at address X" / "what does this STA do" / "is this ROM LoROM or HiROM"
+  question. Pairs with the 6502-instruction-set, 6502-merlin-assembler,
+  6502-sweet16, 6502-snes-sa1, and 6502-to-rust skills.
 ---
 
-# Apple II, Commodore 64 & Atari 8-bit Memory Maps
+# Apple II, Commodore 64, Atari 8-bit & SNES Memory Maps
 
 A 6502 program *is* its memory map: there are no system calls, just stores and
 loads to magic addresses. To understand a routine you must know what each
@@ -38,9 +38,12 @@ disambiguate by *which* registers and ROM calls appear:
 | `JSR $E456`/`$E459` (CIOV/SIOV), `STA $D40A` (WSYNC), display list at `$D402`, POKEY `$D2xx`, page-2 shadow regs (`$022F`, `$0230`), page 6 `$0600` | Atari 8-bit |
 | `JSR $F689` (SWEET16) | Apple II (Integer BASIC ROM) — see the sweet16 skill |
 | 16-bit code, `REP`/`SEP`, toolbox calls | Apple IIgs — see 65816 notes in the 6502-instruction-set skill |
+| 16-bit code + `STA $2100`/`$2118`, `$420B` DMA kicks, `$4200` NMI enable, `$7E`/`$7F` banks, long `JSL` | SNES — see `references/snes-memory.md` |
+| SNES code touching `$2200-$23FF` or `$3000-$37FF` | SNES SA-1 cart — see the 6502-snes-sa1 skill |
 
-All three put the stack at `$0100-$01FF` and use a precious 256-byte zero page,
-but almost everything else differs.
+The three 8-bit machines all put the stack at `$0100-$01FF` and use a precious
+256-byte zero page, but almost everything else differs. On the SNES both are
+relocatable within bank 0 (65816 `S` and `D` registers).
 
 ## How to read the references
 
@@ -73,6 +76,27 @@ Read only the file for the platform and topic at hand:
 - **`references/atari8-os.md`** — the `$E450` OS jump-vector table (CIOV, SIOV,
   SETVBV…), the CIO device-independent I/O system and IOCBs, SIO, and the
   (BCD) floating-point package at `$D800`.
+
+**SNES / Super Famicom**
+- **`references/snes-memory.md`** — the S-CPU's view of memory:
+  - Bus A vs Bus B, the full bank map with Fast/Slow/XSlow access speeds,
+    FastROM, and WRAM mirroring.
+  - LoROM/HiROM/ExHiROM cart layouts, ROM-offset formulas, and where
+    interrupt stubs must live.
+  - A `$2100-$2183` PPU/APU register list (purpose only; no PPU bit detail).
+  - Bit-level `$4200-$421F` CPU registers (NMI/IRQ, mul/div, joypad).
+  - `$43xx` DMA/HDMA channels: how a transfer works and the HDMA table format.
+  - Open bus.
+- **`references/snes-rom-header.md`** — the cartridge header at `$00:FFC0`.
+  Quick facts come first; read just those to locate the header or tell the
+  layout. After that:
+  - all fields, the map-mode/chipset/region codes, and the extended header;
+  - ROM file formats and copier headers;
+  - the checksum, with non-power-of-two mirroring;
+  - layout-detection heuristics;
+  - worked FF4 (LoROM) and FF6 (HiROM) examples.
+
+  Read it for any question about a ROM file, its header, or its checksum.
 
 ## Why this matters for porting
 

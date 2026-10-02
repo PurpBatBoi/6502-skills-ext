@@ -4,13 +4,17 @@ description: >-
   Reference and semantics for the MOS 6502 / 65C02 / 65816 instruction set:
   mnemonics, addressing modes, opcode bytes, cycle counts, and exact flag
   effects. Use this skill WHENEVER you read, write, disassemble, trace, explain,
-  or port 6502-family assembly (including Apple II, Commodore, NES, Atari, BBC
-  Micro code), or when you need to know what an instruction does to the
-  registers, status flags, or memory. Trigger on questions like "what does this
-  6502 routine do", "what flags does ADC set", "is this a 65C02 instruction",
-  "trace this assembly", or any opcode/mnemonic (LDA, STA, JSR, ROL, BIT, SWEET16
-  excepted) appearing in a file. Pairs with the 6502-merlin-assembler,
-  6502-memory-map, and 6502-to-rust skills.
+  or port 6502-family assembly (including Apple II/IIgs, Commodore, NES, SNES,
+  Atari, BBC Micro code), or when you need to know what an instruction does to
+  the registers, status flags, or memory. Covers 65816 native/emulation mode,
+  REP/SEP register widths, bank-boundary wrapping, and the SNES Ricoh 5A22
+  CPU (decimal mode, cycle timing, interrupt latency). Trigger on questions
+  like "what does this 6502 routine do", "what flags does ADC set", "is this a
+  65C02 instruction", "does this 65816 access wrap at the bank", "trace this
+  assembly", or any opcode/mnemonic (LDA, STA, JSR, ROL, BIT, REP, SEP, XCE,
+  JSL; SWEET16 excepted) appearing in a file. Pairs with the
+  6502-merlin-assembler, 6502-memory-map, 6502-snes-sa1, and 6502-to-rust
+  skills.
 ---
 
 # 6502 / 65C02 / 65816 Instruction Set
@@ -62,10 +66,13 @@ bolted on around the core. The base 6502 references apply to all of them.
 | 2A03 / 2A07 | NES / Famicom | 6502 core with **decimal mode disabled** (ADC/SBC ignore D); has integrated audio |
 | 65C02 | Apple IIe-enhanced, IIc | CMOS superset — see `references/65c02.md` |
 | 65802 / 65816 | Apple IIgs | 16-bit superset — see `references/65816.md` |
+| 5A22 | SNES / Super Famicom | Ricoh 65C816 core + on-die DMA/HDMA, mul/div unit, timers; **decimal mode works**; each cycle takes 6, 8 or 12 master clocks depending on the address — see the SNES section of `references/65816.md` |
+| SA-1 (RF5A123) | SNES cartridges | a second 65C816 core at 10.74 MHz inside the cart — see the 6502-snes-sa1 skill |
 
 The NES's missing BCD is a real porting trap: NES code never relies on decimal
 mode, so a `SED`/`CLD` you'd expect is simply absent, and any stray `D=1` would
-be a no-op there but not on a C64 or Apple II.
+be a no-op there but not on a C64 or Apple II. The trap doesn't carry over
+to the SNES: the 5A22 does real BCD.
 
 ## How to read the references
 
@@ -82,9 +89,11 @@ Start here; drop into a reference file only when you need the detail:
   need cycle-exact timing.
 - **`references/65c02.md`** — what the CMOS 65C02 adds and changes vs NMOS
   (new instructions, new addressing modes, bug fixes). Apple IIe-enhanced/IIc.
-- **`references/65816.md`** — the 16-bit 65816/65802 (Apple IIgs): native vs
-  emulation mode, 8/16-bit M/X flags, wider registers, bank registers, long
-  addressing, block moves. Read this before touching any IIgs source.
+- **`references/65816.md`** — the 16-bit 65816/65802 (Apple IIgs, SNES 5A22):
+  native vs emulation mode, 8/16-bit M/X flags, wider registers, bank
+  registers, long addressing, block moves, per-mode bank-boundary wrapping,
+  and SNES CPU timing/interrupt notes. Read this before touching any IIgs or
+  SNES source.
 - **`references/undocumented.md`** — NMOS "illegal" opcodes (LAX, SAX, DCP, ISC,
   SLO, RLA, SRE, RRA, ANC, ALR, ARR, etc.). Some real Apple II / C64 code
   relies on these; the 65C02 redefines them as NOPs.
@@ -94,7 +103,7 @@ Start here; drop into a reference file only when you need the detail:
 When handed a block of 6502 assembly:
 1. Identify the CPU variant. If you see `STZ`, `BRA`, `PHX`, `(zp)` indirect, or
    the file targets a IIe-enhanced/IIc, assume 65C02. If you see `REP`/`SEP`,
-   `MX`, `.al`, long addresses, or a IIgs target, assume 65816 — the operand
+   `MX`, `.al`, long addresses, or a IIgs or SNES target, assume 65816 — the operand
    *width* of immediate loads then depends on the M/X flag state, so you must
    track mode.
 2. Track the flags as a small state machine. Annotate each branch with the

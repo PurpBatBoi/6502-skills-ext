@@ -1,17 +1,24 @@
 # 6502 Skills
 
 A cluster of Claude skills for working with **6502-family assembly** — reading,
-writing, understanding, and porting it — with a focus on the Apple II (Merlin
-assembler), the Commodore 64, and the Atari 400/800/XL/XE. All skills share a
-`6502-` prefix so they group together once installed.
+writing, understanding, and porting it — with a focus on the Apple II/IIgs
+(Merlin assembler), the SNES (65C816 / Ricoh 5A22, plus the SA-1 coprocessor),
+the Commodore 64, and the Atari 400/800/XL/XE. All skills share a `6502-`
+prefix so they group together once installed.
+
+SNES coverage is the CPU and the memory map only: the 5A22 core and its CPU
+registers, DMA/HDMA, cartridge mapping, and the SA-1. PPU graphics and APU
+sound programming are out of scope, and the PPU/APU registers are listed by
+address and purpose only.
 
 ## The skills
 
 | Skill | What it covers |
 |-------|----------------|
-| **`6502-instruction-set`** | NMOS 6502 / 65C02 / 65816 mnemonics, addressing modes, opcode bytes, cycle counts, and exact flag semantics. CPU-variant notes (6510/C64, 2A03/NES). The reference for *what an instruction does*. |
+| **`6502-instruction-set`** | NMOS 6502 / 65C02 / 65816 mnemonics, addressing modes, opcode bytes, cycle counts, and exact flag semantics. 65816 bank-boundary wrapping. CPU-variant notes (6510/C64, 2A03/NES, 5A22/SNES). The reference for *what an instruction does*. |
 | **`6502-merlin-assembler`** | Merlin macro-assembler source: column layout, directives (DFB/DW/DDB/DCI/ASC/HEX/LUP/MAC…), macros and parameters, label/variable conventions, and Merlin's left-to-right expression evaluation. Apple Merlin 8/16/32 and Commodore Merlin 64/128. |
-| **`6502-memory-map`** | Apple II, C64, and Atari 8-bit memory maps, I/O registers, ROM entry points, and zero-page conventions: Apple soft switches, language card, Monitor ROM, Applesoft FP; C64 6510 banking, VIC-II/SID/CIA, the KERNAL jump table; Atari ANTIC/GTIA/POKEY, shadow registers, CIO/SIO, the $E450 vectors. |
+| **`6502-memory-map`** | Apple II, C64, Atari 8-bit, and SNES memory maps, I/O registers, ROM entry points, and zero-page conventions: Apple soft switches, language card, Monitor ROM, Applesoft FP; C64 6510 banking, VIC-II/SID/CIA, the KERNAL jump table; Atari ANTIC/GTIA/POKEY, shadow registers, CIO/SIO, the $E450 vectors; SNES bus A/B, LoROM/HiROM, FastROM speeds, `$4200` CPU registers, `$43xx` DMA/HDMA. |
+| **`6502-snes-sa1`** | The SA-1 SNES coprocessor (a second 65C816 in the cart): dual-CPU model and per-side memory maps, boot, inter-CPU IRQ/messages, I-RAM/BW-RAM write protection, Super MMC banking, SA-1 and character-conversion DMA, the arithmetic unit, variable-length bit reads, the timer, and every `$2200-$230E` register. |
 | **`6502-sweet16`** | Wozniak's SWEET16 — the 16-bit interpreted pseudo-processor in the Apple II Integer BASIC ROM (entry `$F689`): registers, opcode set, invocation, and how to decode its inline bytecode. |
 | **`6502-to-rust`** | A two-stage workflow for porting 6502 assembly to idiomatic Rust via an explicit, flag-faithful intermediate language: lift → recover intent → emit, plus correctness rules and a verification method. |
 
@@ -24,7 +31,7 @@ directories; what differs per agent is *which* directory it scans.
 
 ### Quick install — `install.sh`
 
-`install.sh` symlinks (or copies) the five `6502-*` skills into the right place:
+`install.sh` symlinks (or copies) the six `6502-*` skills into the right place:
 
 ```sh
 ./install.sh --claude            # Claude Code, personal      → ~/.claude/skills/
@@ -73,14 +80,19 @@ marketplaces; for direct use, install the directories as above.
  6502-merlin-assembler   6502-memory-map   6502-sweet16
    (source dialect)      (what addresses     (the inline VM)
                           mean per platform)
-                     │
+                                │
+                          6502-snes-sa1      ← SNES SA-1 carts: second CPU,
+                                │              its own map and registers
                 6502-to-rust        ← uses all of the above to port
 ```
 
 When porting (`6502-to-rust`), the other skills supply the context the port
-depends on: the instruction set fixes semantics, the memory map classifies every
-address as RAM / hardware / ROM call, the Merlin skill decodes the source, and
-SWEET16 handles any inline-bytecode regions.
+depends on:
+- the instruction set fixes semantics;
+- the memory map classifies every address as RAM / hardware / ROM call;
+- the SA-1 skill adds the second CPU's address space on SA-1 carts;
+- the Merlin skill decodes the source;
+- SWEET16 handles any inline-bytecode regions.
 
 ## Layout
 
@@ -95,3 +107,33 @@ Built and iterated with the `skill-creator` skill. Key technical facts
 were verified against primary sources (Wozniak's BYTE 1977 SWEET16 article, the
 Brutal Deluxe Merlin 32 manual, the Apple II/C64 memory-map references) during
 authoring.
+
+The 65816/SNES/SA-1 content was checked against these sources:
+
+| Source | Used for |
+|--------|----------|
+| [WDC W65C816S datasheet](https://www.westerndesigncenter.com/wdc/documentation/w65c816s.pdf) (§3, §7 caveats, vector tables) | bank-boundary wrapping, vectors, emulation-mode stack/direct-page rules |
+| [Apple IIgs Hardware Reference, 2nd ed.](https://archive.org/details/Apple_IIGS_Hardware_Reference_1988_Adn-Wesley_Publishing_second_edition) | the Apple side of the comparison |
+| Super Famicom Development Wiki — [Memory Mapping](https://wiki.superfamicom.org/memory-mapping), [Timing](https://wiki.superfamicom.org/timing), [Registers](https://wiki.superfamicom.org/registers), [DMA & HDMA](https://wiki.superfamicom.org/dma-and-hdma), Open Bus, Instruction Wrapping (Anomie's docs) | SNES bus/map, speeds, CPU registers, DMA/HDMA, wrapping tests |
+| [SnesLab: 65c816](https://sneslab.net/wiki/65c816), [SnesLab: SA-1](https://sneslab.net/wiki/SA-1) and SA-1 register notes | 5A22/SA-1 overview, SA-1 register map |
+| SNESdev wiki — [Memory map](https://snes.nesdev.org/wiki/Memory_map), [ROM header](https://snes.nesdev.org/wiki/ROM_header), [ROM file formats](https://snes.nesdev.org/wiki/ROM_file_formats), [CPU vectors](https://snes.nesdev.org/wiki/CPU_vectors) | LoROM/HiROM/ExHiROM layouts, header fields, chipset/region codes, checksum, copier headers, vector table |
+| nesdev forums — [CPU→Cart Address Mapping for ExLoROM/ExHiROM](https://forums.nesdev.org/viewtopic.php?t=14808), [ExtHiROM And ExtLoROM?](https://forums.nesdev.org/viewtopic.php?t=22704); [SnesLab: ExLoROM](https://sneslab.net/wiki/ExLoROM) | ExLoROM layout and status, ExHiROM commercial games, map-mode terminology (corroborates bsnes `EXLOROM` board) |
+| [Wikibooks: Super NES Programming/SNES memory map](https://en.wikibooks.org/wiki/Super_NES_Programming/SNES_memory_map) | secondary only: FF4/FF6 header examples (bytes re-verified), copier-header layout |
+| [bsnes](https://github.com/bsnes-emu/bsnes) source (`sfc/cpu`, `sfc/coprocessor/sa1`, `processor/wdc65816`, board database, `heuristics/super-famicom.cpp`) | tie-breaker wherever the docs disagreed; header offsets, region → NTSC/PAL, header scoring |
+
+Where the sources conflicted, the skills follow the datasheet or bsnes. The
+conflicts were:
+- `$420D` FastROM is bit 0, not bit 1;
+- overscan is `$2133` bit 2, not bit 3;
+- SA-1 `SIWP`/`CIWP` 1 = write-enable;
+- `BWPA` size is `256 << n`, and it applies only when both write-enables are 0;
+- `CBWE` is SA-1-owned;
+- VCNT is at `$2214/5`;
+- the `(a,X)` pointer is fetched from the program bank, not bank 0;
+- `$FFD9` is the region and `$FFDA` the developer ID (Wikibooks swaps them);
+- an interrupt clears PBR only, not DBR, and `XCE` changes neither
+  (datasheet §7.11; Wikibooks claims otherwise);
+- the NTSC region codes are `$00`, `$01`, `$0B`, `$0D`, `$0F`, `$10` (bsnes),
+  wider than the wiki's "`$00`/`$01` only";
+- ExHiROM SRAM placement is board-dependent (bsnes `$20-$3F`/`$A0-$BF`, the
+  wiki shows `$80-$BF`).
