@@ -2,22 +2,23 @@
 name: 6502-memory-map
 description: >-
   Memory maps, I/O registers, ROM entry points, and zero-page conventions for
-  Apple II, Commodore 64, Atari 8-bit, and SNES (5A22 side). Covers
-  Apple soft switches, language card, Monitor ROM, Applesoft FP; C64 banking,
-  VIC-II/SID/CIA, KERNAL; Atari ANTIC/GTIA/POKEY, shadow registers, CIO/SIO;
-  SNES bus A/B, LoROM/HiROM/ExHiROM, FastROM, $42xx CPU registers, $43xx
-  DMA/HDMA, the ROM header ($FFC0, map mode, checksum) and .sfc/.smc files.
-  Use this skill WHENEVER you need to know what an address, register or ROM
-  routine means on these machines, where the screen/zero page/stack are, how
-  banking works, or how a SNES ROM file is laid out. Trigger on addresses like $C050, $FDED, $D020, $FFD2, $D40A,
-  $2118, $4200, $420B, $7E0000, $FFD5, on names like
-  COUT/CHROUT/CIOV/POKEY/NMITIMEN/MDMAEN/HDMAEN/INIDISP, or on any "what is
-  at address X" / "what does this STA do" / "is this ROM LoROM or HiROM"
-  question. Pairs with the 6502-instruction-set, 6502-merlin-assembler,
-  6502-sweet16, 6502-snes-sa1, and 6502-to-rust skills.
+  Apple II, C64, Atari 8-bit, NES, and SNES (5A22 side). Covers Apple soft
+  switches, Monitor ROM, Applesoft FP; C64 banking, VIC-II/SID/CIA, KERNAL;
+  Atari ANTIC/GTIA/POKEY, shadow registers, CIO/SIO; NES PPU/APU/IO
+  registers, OAM DMA, controllers, cart space, vectors; SNES bus A/B,
+  LoROM/HiROM/ExHiROM, FastROM, $42xx/$43xx registers, DMA/HDMA, the ROM
+  header and .sfc/.smc files. Use this skill WHENEVER you need to know what
+  an address, register or ROM routine means on these machines, where the
+  screen/zero page/stack are, how banking works, or how a SNES ROM is laid
+  out. Trigger on addresses like $C050, $FDED, $D020, $FFD2, $D40A, $2002,
+  $4014, $2118, $4200, $420B, $FFD5, on names like
+  COUT/CHROUT/CIOV/POKEY/PPUCTRL/OAMDMA/NMITIMEN/MDMAEN, or on any "what is at
+  address X" / "what does this STA do" / "LoROM or HiROM" question. Pairs
+  with the other 6502-* skills (instruction-set, merlin-assembler, sweet16,
+  snes-sa1, to-rust, to-c).
 ---
 
-# Apple II, Commodore 64, Atari 8-bit & SNES Memory Maps
+# Apple II, Commodore 64, Atari 8-bit, NES & SNES Memory Maps
 
 A 6502 program *is* its memory map: there are no system calls, just stores and
 loads to magic addresses. To understand a routine you must know what each
@@ -38,10 +39,11 @@ disambiguate by *which* registers and ROM calls appear:
 | `JSR $E456`/`$E459` (CIOV/SIOV), `STA $D40A` (WSYNC), display list at `$D402`, POKEY `$D2xx`, page-2 shadow regs (`$022F`, `$0230`), page 6 `$0600` | Atari 8-bit |
 | `JSR $F689` (SWEET16) | Apple II (Integer BASIC ROM) — see the sweet16 skill |
 | 16-bit code, `REP`/`SEP`, toolbox calls | Apple IIgs — see 65816 notes in the 6502-instruction-set skill |
+| 8-bit code + `STA $2000`/`$2001`, `BIT $2002`, `$2006`/`$2007` pairs, `STA $4014`, `$4016` strobe/reads, vectors at `$FFFA` | NES — see `references/nes-memory.md` (the SNES PPU sits at `$21xx`, not `$2000-$2007`) |
 | 16-bit code + `STA $2100`/`$2118`, `$420B` DMA kicks, `$4200` NMI enable, `$7E`/`$7F` banks, long `JSL` | SNES — see `references/snes-memory.md` |
 | SNES code touching `$2200-$23FF` or `$3000-$37FF` | SNES SA-1 cart — see the 6502-snes-sa1 skill |
 
-The three 8-bit machines all put the stack at `$0100-$01FF` and use a precious
+The 8-bit machines (including the NES) all put the stack at `$0100-$01FF` and use a precious
 256-byte zero page, but almost everything else differs. On the SNES both are
 relocatable within bank 0 (65816 `S` and `D` registers).
 
@@ -76,6 +78,15 @@ Read only the file for the platform and topic at hand:
 - **`references/atari8-os.md`** — the `$E450` OS jump-vector table (CIOV, SIOV,
   SETVBV…), the CIO device-independent I/O system and IOCBs, SIO, and the
   (BCD) floating-point package at `$D800`.
+
+**NES / Famicom**
+- **`references/nes-memory.md`** — the 2A03's view:
+  - the CPU map (2 KiB RAM + mirrors, cart space, vectors, DPCM range);
+  - PPU `$2000-$2007` with bit-level PPUCTRL/PPUMASK/PPUSTATUS, the write
+    toggle and the buffered `$2007` reads;
+  - APU/IO `$4000-$4017`: OAM DMA, `$4015`, controllers, frame counter;
+  - porting classification, including writes to `$8000+` as mapper
+    registers.
 
 **SNES / Super Famicom**
 - **`references/snes-memory.md`** — the S-CPU's view of memory:

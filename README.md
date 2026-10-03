@@ -3,7 +3,7 @@
 A cluster of Claude skills for working with **6502-family assembly** — reading,
 writing, understanding, and porting it — with a focus on the Apple II/IIgs
 (Merlin assembler), the SNES (65C816 / Ricoh 5A22, plus the SA-1 coprocessor),
-the Commodore 64, and the Atari 400/800/XL/XE. All skills share a `6502-`
+the Commodore 64, the Atari 400/800/XL/XE, and the NES. All skills share a `6502-`
 prefix so they group together once installed.
 
 SNES coverage is the CPU and the memory map only: the 5A22 core and its CPU
@@ -17,10 +17,10 @@ address and purpose only.
 |-------|----------------|
 | **`6502-instruction-set`** | NMOS 6502 / 65C02 / 65816 mnemonics, addressing modes, opcode bytes, cycle counts, and exact flag semantics. 65816 bank-boundary wrapping. CPU-variant notes (6510/C64, 2A03/NES, 5A22/SNES). The reference for *what an instruction does*. |
 | **`6502-merlin-assembler`** | Merlin macro-assembler source: column layout, directives (DFB/DW/DDB/DCI/ASC/HEX/LUP/MAC…), macros and parameters, label/variable conventions, and Merlin's left-to-right expression evaluation. Apple Merlin 8/16/32 and Commodore Merlin 64/128. |
-| **`6502-memory-map`** | Apple II, C64, Atari 8-bit, and SNES memory maps, I/O registers, ROM entry points, and zero-page conventions: Apple soft switches, language card, Monitor ROM, Applesoft FP; C64 6510 banking, VIC-II/SID/CIA, the KERNAL jump table; Atari ANTIC/GTIA/POKEY, shadow registers, CIO/SIO, the $E450 vectors; SNES bus A/B, LoROM/HiROM, FastROM speeds, `$4200` CPU registers, `$43xx` DMA/HDMA. |
+| **`6502-memory-map`** | Apple II, C64, Atari 8-bit, NES, and SNES memory maps, I/O registers, ROM entry points, and zero-page conventions: Apple soft switches, language card, Monitor ROM, Applesoft FP; C64 6510 banking, VIC-II/SID/CIA, the KERNAL jump table; Atari ANTIC/GTIA/POKEY, shadow registers, CIO/SIO, the $E450 vectors; NES PPU/APU/IO registers, OAM DMA, controllers, cart space; SNES bus A/B, LoROM/HiROM, FastROM speeds, `$4200` CPU registers, `$43xx` DMA/HDMA. |
 | **`6502-snes-sa1`** | The SA-1 SNES coprocessor (a second 65C816 in the cart): dual-CPU model and per-side memory maps, boot, inter-CPU IRQ/messages, I-RAM/BW-RAM write protection, Super MMC banking, SA-1 and character-conversion DMA, the arithmetic unit, variable-length bit reads, the timer, and every `$2200-$230E` register. |
 | **`6502-sweet16`** | Wozniak's SWEET16 — the 16-bit interpreted pseudo-processor in the Apple II Integer BASIC ROM (entry `$F689`): registers, opcode set, invocation, and how to decode its inline bytecode. |
-| **`6502-to-c`** | The same lift → raise → emit workflow targeting portable C99, NMOS 6502 only (6510/C64, 2A03/NES). One C core builds as host C and back onto the 6502 with llvm-mos (C64, Atari 8-bit, Apple II, NES). Covers C's integer-promotion traps, a `platform.h` hardware layer, `__zp`, inline asm for ROM calls, and differential testing on host and `mos-sim`. |
+| **`6502-to-c`** | The same lift → raise → emit workflow targeting portable C99, NMOS 6502 only (6510/C64, 2A03/NES). One C core builds as host C and back onto the 6502 with llvm-mos (C64, Atari 8-bit, Apple II, NES). Covers C's integer-promotion traps, a `platform.h` hardware layer, `__zp`, inline asm for ROM calls, and differential testing on host and `mos-sim` via the bundled `scripts/run-tests.sh`. |
 | **`6502-to-rust`** | A two-stage workflow for porting 6502 assembly to idiomatic Rust via an explicit, flag-faithful intermediate language: lift → recover intent → emit, plus correctness rules and a verification method. |
 
 ## Installing
@@ -100,7 +100,8 @@ depends on:
 
 Each skill is a directory with a `SKILL.md` (the always-loaded instructions and
 trigger description) and a `references/` folder of detail files loaded only when
-needed (progressive disclosure). See each `SKILL.md` for the reference index.
+needed (progressive disclosure). `6502-to-c` also ships `scripts/run-tests.sh`.
+See each `SKILL.md` for the reference index.
 
 ## Authoring
 

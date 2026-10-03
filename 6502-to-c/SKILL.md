@@ -90,13 +90,15 @@ verification. Two output shapes:
 
 For the 6502 build, `references/llvm-mos.md` covers drivers, the 16-bit
 `int`, costs, `__zp`, hardware headers per platform, inline asm for ROM calls,
-the calling convention for leftover `.s` files, and testing on `mos-sim`.
+the calling convention and GNU-as syntax for leftover `.s` files (including
+the `mos8()` zero-page trap), and testing on `mos-sim`.
 
 ## C rules that are easy to get wrong
 
 1. **`uint8_t` arithmetic happens in `int`.** Cast every result back:
-   `a = (uint8_t)(a + 1u)`. Compile with `-Wconversion` so the compiler finds
-   the casts you missed.
+   `a = (uint8_t)(a + 1u)`. Warnings won't find the ones you miss: gcc's
+   `-Wconversion` flagged none of the test patterns, and clang flagged only
+   `~m`. Boundary tests and the undefined-behavior checker do find them.
 2. **`~m` is an `int`.** `SBC` must be `adc8(a, (uint8_t)~m, c)`, or the carry
    is wrong.
 3. **Addresses wrap at 16 bits and zero page wraps at 8.** Write
@@ -140,9 +142,15 @@ were live, the function would return it, computed from a `uint32_t` sum.
 
 ## Verify
 
-Run a differential test: the faithful oracle against the idiomatic port, on
-exhaustive byte inputs and boundary cases. Run it on the host with
-`-Wall -Wextra -Wpedantic -Wconversion` and the undefined-behavior checks;
-MinGW needs `-fsanitize-undefined-trap-on-error`. Then run the same tests on
-`mos-sim` with its 16-bit `int`. Details are in `c-patterns.md` and
-`llvm-mos.md`.
+Write a differential test: a `main()` that compares the faithful oracle with
+the idiomatic port on exhaustive byte inputs and boundary cases, returning
+non-zero on mismatch. Then run:
+
+```sh
+scripts/run-tests.sh tests.c port.c host_platform.c     # SKIP_SIM=1 for host-only tests
+```
+
+It builds and runs the tests on the host (C99, strict warnings,
+undefined-behavior checks in trap mode, which also works on MinGW), then on
+`mos-sim` with its 16-bit `int`, and exits non-zero on any failure. Details
+are in `c-patterns.md` and `llvm-mos.md`.

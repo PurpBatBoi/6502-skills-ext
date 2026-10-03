@@ -36,8 +36,15 @@ and `uint16_t` happens in `int`.
 | Loop counter type | `int i` compared against a byte | `uint8_t`/`unsigned`, with explicit 0→256 handling | See the loop trip-count rules in `il-spec.md` |
 
 Rule of thumb: **every assignment of an arithmetic result to `uint8_t` or
-`uint16_t` gets an explicit cast.** It documents the wrap, and `-Wconversion`
-then reports every place you missed.
+`uint16_t` gets an explicit cast**, because it documents the wrap. Don't count
+on compiler warnings to find the casts you missed. Tested against six of these
+patterns:
+- gcc 16's `-Wconversion` flagged **none** of them;
+- clang flagged only `~m` passed as a byte or used in a sum;
+- neither flagged `a + 1 == 0` or `mem[addr + 1]`.
+
+Tests find those: boundary and exhaustive inputs, plus the undefined-behavior
+checker, whose bounds check trapped `mem[0xFFFF + 1]` at runtime.
 
 ## Flag helpers
 
@@ -283,9 +290,12 @@ silently.
    trace, return values. Sweep exhaustively where you can (all 65,536 byte
    pairs take milliseconds) and add boundary cases: `0x00`, `0xFF`, carry
    in/out, `$xxFF` page crossings, and BCD values `0x09+0x01` and `0x99+0x01`.
-2. **Warnings as the first test:**
-   `gcc -std=c99 -Wall -Wextra -Wpedantic -Wconversion` (or clang). Every
-   `-Wconversion` warning is a missing wrap cast.
+2. **Warnings, as a first filter only:**
+   `-std=c99 -Wall -Wextra -Wpedantic -Wconversion`.
+   - Prefer clang. Any llvm-mos driver is clang, so building the core with
+     `mos-sim-clang -Wconversion` works as a checker too. Clang flags `~` on
+     bytes; gcc flags much less.
+   - Treat a clean build as necessary, not sufficient.
 3. **Undefined-behavior checks.**
    - Linux/macOS: `-fsanitize=undefined,address`.
    - MinGW has no UBSan runtime (`cannot find -lubsan`). Use
@@ -299,6 +309,18 @@ silently.
 5. If you reimplemented a ROM routine, test it against its documented
    behavior (for example, CHROUT control codes), not against the ROM bytes.
 
+**One command for steps 2-4:** `scripts/run-tests.sh tests.c port.c host_platform.c`.
+- It builds and runs on the host with the warnings plus trap-mode UB checks
+  (works on MinGW), then on `mos-sim`.
+- It prints PASS/FAIL per target and exits non-zero on any failure.
+- For host-only tests such as the 64 KiB oracle, use `SKIP_SIM=1`.
+- Your `tests.c` is a plain `main()` that compares oracle and port and
+  returns non-zero on mismatch.
+
+Verified with deliberate bugs:
+- signed overflow traps on the host (exit 132);
+- a 16-bit `int` assumption passes on the host and fails on `mos-sim`.
+
 ## Emit checklist
 
 - [ ] CPU (6502/6510/2A03), platform, and decimal-mode regions identified.
@@ -306,10 +328,9 @@ silently.
 - [ ] Dead flags removed (proven, not assumed).
 - [ ] Idioms collapsed; byte pairs → `uint16_t`; buffers → arrays/pointers.
 - [ ] Only `uint8_t`/`uint16_t`/`unsigned` for machine values; every narrowing
-      assignment cast; clean under `-Wconversion`.
+      assignment cast (warnings won't find them all).
 - [ ] `~` operands cast back to `uint8_t`; address math cast to `uint16_t`.
 - [ ] Overlapping copies kept as loops, not `memcpy`.
 - [ ] Every hardware/ROM access goes through `platform.h`.
 - [ ] Self-modifying sites handled explicitly.
-- [ ] Differential test passes on the host, under the UB checks, and on
-      `mos-sim`.
+- [ ] `scripts/run-tests.sh` passes: host (with the UB checks) and `mos-sim`.

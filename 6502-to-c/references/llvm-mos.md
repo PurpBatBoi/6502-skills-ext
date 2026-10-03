@@ -11,7 +11,7 @@ Contents: [Drivers](#drivers-and-predefined-macros) ·
 [Data model](#data-model-and-costs) · [Zero page](#zero-page) ·
 [Hardware](#hardware-access-per-platform) · [Inline asm](#inline-assembly-for-rom-calls) ·
 [Calling convention](#calling-convention-for-s-files) ·
-[Inspecting output](#inspecting-output) · [Testing on a 6502](#testing-on-a-6502-mos-sim)
+[`.s` syntax](#writing-s-files-gnu-as-syntax) · [Inspecting output](#inspecting-output) · [Testing on a 6502](#testing-on-a-6502-mos-sim)
 
 ## Drivers and predefined macros
 
@@ -128,6 +128,52 @@ For anything more complex, write the C prototype, compile a tiny caller with
 `-fno-lto -S`, and copy what the compiler emits. Don't guess. Code that
 modifies itself must also run from RAM. On cartridge targets (NES, Atari
 cart), copy it into RAM at startup before calling it.
+
+## Writing `.s` files (GNU-as syntax)
+
+The llvm-mos assembler is GNU-assembler compatible. That means `.macro`,
+`.if`, `.section` and `.global` work, but ca65 and Merlin directives don't. It
+assembles the NMOS opcode set and computes 6502 relative branch offsets
+itself. Hand the `.s` file to the same driver as the C files. This example
+was built with the C caller below and run on `mos-sim` (it returned 33):
+
+```asm
+; uint8_t add3(uint8_t a, uint8_t b) — a in A, b in X, result in A
+.macro addk k
+    clc
+    adc #\k
+.endm
+.section .text.add3,"ax",@progbits
+.global add3
+add3:
+    stx mos8(__rc2)    ; mos8() forces zero-page addressing (2-byte STX)
+    clc
+    adc mos8(__rc2)
+    addk $03           ; $ hex prefix works, as does 0x
+    rts
+```
+
+```sh
+mos-c64-clang -Os -std=c99 main.c add3.s -o game.prg
+```
+
+Zero page versus absolute addressing, checked with `llvm-objdump`:
+
+| Operand | Encoded as |
+|---------|------------|
+| literal `$10` | zero page (2 bytes) |
+| literal `$1234` | absolute (3 bytes) |
+| symbol defined in a `.zp*` section of the same file | zero page |
+| **external symbol** (e.g. `__rc2`, or a `__zp` C variable) | **absolute** — wrap it in `mos8(sym)` to get zero page |
+
+That last row is the trap: without `mos8()` the code still works but is a
+byte longer and a cycle slower per access, which matters in hot loops ported
+from zero-page code.
+
+Target-specific directive: `.mos_addr_asciz <expr>, <digits>` emits a
+fixed-length decimal ASCII string plus a NUL (verified: `1234, 4` →
+`"1234\0"`). Its main use is the C64 BASIC `SYS` header. When running the
+standalone assembler (`llvm-mc`), select the target with `-triple mos`.
 
 ## Inspecting output
 
